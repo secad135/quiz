@@ -1,5 +1,26 @@
 <?php
 require 'db.php';
+
+function getTopicNames($conn, $topic_ids_string) {
+    if (empty($topic_ids_string)) return '';
+    
+    // رشته IDها را به آرایه تبدیل می‌کنیم
+    $ids = array_map('intval', explode(',', $topic_ids_string));
+    
+    // آماده‌سازی IN(...)
+    $placeholders = implode(',', $ids);
+    
+    // پرس‌وجوی نام موضوع‌ها
+    $res = $conn->query("SELECT name FROM topics WHERE id IN ($placeholders)");
+    
+    $names = [];
+    while($row = $res->fetch_assoc()) {
+        $names[] = $row['name'];
+    }
+    
+    return implode(', ', $names); // جداکننده کاما بین نام‌ها
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -95,7 +116,7 @@ a.back:hover {
             <tr>
                 <td><?= $count++ ?></td>
                 <td><?= htmlspecialchars($row['student_name']) ?></td>
-                <td><?= htmlspecialchars($row['topics']) ?></td>
+                <td><?= htmlspecialchars(getTopicNames($conn, $row['topics'])) ?></td>
                 <td><?= $row['total_questions'] ?></td>
                 <td><?= $row['correct_answers'] ?></td>
                 <td><?= $row['wrong_answers'] ?></td>
