@@ -1,6 +1,10 @@
 <?php
 require 'db.php';
 
+session_start();
+$student_name = $_SESSION['student_name'] ?? 'نامشخص';
+$topics_selected = implode(',', $_SESSION['topics'] ?? []);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $answers = $_POST['answers'] ?? [];
 
@@ -54,6 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $total = count($answers);
     $percentage = round(($score / $total) * 100, 2);
+
+    // ذخیره نتیجه در جدول quiz_results
+$insert = $conn->prepare("INSERT INTO quiz_results 
+    (student_name, topics_selected, total_questions, correct_answers, score_percent)
+    VALUES (?, ?, ?, ?, ?)");
+$insert->bind_param("ssiid", $student_name, $topics_selected, $total, $score, $percentage);
+$insert->execute();
+
 }
 ?>
 

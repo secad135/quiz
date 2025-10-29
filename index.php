@@ -41,8 +41,9 @@ a.button:hover {
 <body>
 <div class="container">
   <h1>سیستم آزمون آنلاین PHP</h1>
-  <a href="quiz.php" class="button">شروع آزمون جدید</a>
+  <a href="start_quiz.php" class="button">شروع آزمون جدید</a>
   <a href="manage_questions.php" class="button">مدیریت سوالات</a>
+    <a href="results_history.php" class="button">نتایج قبلی</a>
 </div>
 </body>
 </html>

@@ -1,22 +1,57 @@
 <?php
 require 'db.php';
+session_start();
+
+// اگر این صفحه از start_quiz.php فراخوانی شده، session پر شده است.
+// ولی برای اطمینان اگر فرم مستقیم ارسال شد نیز مدیریت میکنیم.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // نام دانش‌آموز و موضوعات از فرم می‌آیند (start_quiz.php)
+    if (isset($_POST['student_name'])) {
+        $_SESSION['student_name'] = trim($_POST['student_name']);
+    }
+    if (isset($_POST['topics'])) {
+        // اطمینان حاصل کن که مقادیر عددی هستند
+        $_SESSION['topics'] = array_map('intval', $_POST['topics']);
+    }
+}
+
+// گرفتن موضوعات از سشن
+$topics = $_SESSION['topics'] ?? [];
+
+// بررسی انتخاب موضوع
+if (empty($topics) || !is_array($topics)) {
+    die("❌ لطفاً حداقل یک موضوع را انتخاب کنید. (به صفحهٔ شروع آزمون بازگردید)");
+}
+
+// پاکسازی و ساختن لیست امن برای IN(...)
+$topics = array_values(array_map('intval', $topics)); // اعداد صحیح
+$in_list = implode(',', $topics); // الآن مانند: "1,3,5"
 
 // تعداد سؤالات در هر آزمون
 $question_limit = 20;
 
-// دریافت سؤالات به صورت تصادفی از جدول
-$query = "SELECT id, topic_id, question, code_snippet, option_a, option_b, option_c, option_d, correct_option 
-          FROM questions 
-          ORDER BY RAND() 
-          LIMIT ?";
-$stmt = $conn->prepare($query);
+// کوئری: توجه کن که topic_id ها مستقیم وارد شده‌اند اما قبلاً sanitize شدند با intval.
+// فقط برای LIMIT از پارامتر استفاده می‌کنیم تا از prepared statement بهره ببریم.
+$sql = "
+    SELECT id, topic_id, question, code_snippet, option_a, option_b, option_c, option_d, correct_option
+    FROM questions
+    WHERE topic_id IN ($in_list)
+    ORDER BY RAND()
+    LIMIT ?
+";
+
+// آماده‌سازی و اجرا
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
+    die("خطا در آماده‌سازی پرس‌وجو: " . $conn->error);
+}
 $stmt->bind_param("i", $question_limit);
 $stmt->execute();
 $result = $stmt->get_result();
 
 // بررسی تعداد سؤالات
 if ($result->num_rows === 0) {
-    die("❌ هیچ سؤالی در پایگاه داده یافت نشد!");
+    die("❌ هیچ سؤالی در پایگاه داده برای موضوعات انتخاب شده یافت نشد!");
 }
 ?>
 
@@ -59,12 +94,13 @@ h2 {
     color: #222;
     margin: 10px 0;
     white-space: pre-wrap;
+    overflow-x: auto;
 }
 label {
     display: block;
     padding: 6px;
     border-radius: 6px;
-    direction: ltr;
+    direction: rtl;
 }
 input[type="radio"] {
     margin-left: 10px;
@@ -83,16 +119,29 @@ button {
 button:hover {
     background: #005f87;
 }
+.student-info {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #555;
+}
 </style>
 </head>
 
 <body>
 <div class="container">
     <h2>🧠 آزمون آنلاین PHP</h2>
+
+    <?php if (!empty($_SESSION['student_name'])): ?>
+        <div class="student-info">
+            دانش‌آموز: <strong><?= htmlspecialchars($_SESSION['student_name']) ?></strong>
+        </div>
+    <?php endif; ?>
+
     <form action="result.php" method="post">
         <?php
         $qNumber = 1;
         while ($row = $result->fetch_assoc()):
+            // نمایش سوالات
         ?>
             <div class="question">
                 <strong><?= $qNumber ?>. <?= htmlspecialchars($row['question']) ?></strong>
@@ -121,7 +170,7 @@ button:hover {
                     <?= htmlspecialchars($row['option_d']) ?>
                 </label>
             </div>
-        <?php 
+        <?php
             $qNumber++;
         endwhile;
         ?>
