@@ -1,9 +1,9 @@
 <?php
 require 'db.php';
-
 session_start();
+
 $student_name = $_SESSION['student_name'] ?? 'نامشخص';
-$topics_selected = implode(',', $_SESSION['topics'] ?? []);
+$topics_selected = $_SESSION['topics'] ?? [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $answers = $_POST['answers'] ?? [];
@@ -12,18 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("❌ هیچ پاسخی ارسال نشده است!");
     }
 
-    // استخراج کلیدهای سؤالات
+    // استخراج شناسه‌های سوالات
     $question_ids = array_keys($answers);
 
-    // آماده‌سازی لیست شناسه‌ها برای کوئری IN
+    // ساخت placeholders برای IN(...)
     $placeholders = implode(',', array_fill(0, count($question_ids), '?'));
     $types = str_repeat('i', count($question_ids));
 
-    // دریافت اطلاعات سؤالات مربوط به آزمون
+    // دریافت سوالات مربوطه
     $sql = "SELECT id, question, code_snippet, option_a, option_b, option_c, option_d, correct_option
             FROM questions
             WHERE id IN ($placeholders)";
     $stmt = $conn->prepare($sql);
+    if(!$stmt) die("خطا در آماده‌سازی پرس‌وجو: " . $conn->error);
     $stmt->bind_param($types, ...$question_ids);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -32,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $score = 0;
     $wrong = [];
 
-    // بررسی پاسخ‌ها
     while ($row = $result->fetch_assoc()) {
         $qid = $row['id'];
         $user_answer = $answers[$qid];
@@ -57,15 +57,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $total = count($answers);
+    $wrong_count = $total - $score;
     $percentage = round(($score / $total) * 100, 2);
 
     // ذخیره نتیجه در جدول quiz_results
-$insert = $conn->prepare("INSERT INTO quiz_results 
-    (student_name, topics_selected, total_questions, correct_answers, score_percent)
-    VALUES (?, ?, ?, ?, ?)");
-$insert->bind_param("ssiid", $student_name, $topics_selected, $total, $score, $percentage);
-$insert->execute();
-
+    // توجه: مطمئن شو جدول quiz_results ستون‌های زیر را دارد:
+    // student_name, topics, total_questions, correct_answers, wrong_answers, score
+    $topics_list = implode(',', $topics_selected);
+    $insert = $conn->prepare("INSERT INTO quiz_results 
+        (student_name, topics, total_questions, correct_answers, wrong_answers, score)
+        VALUES (?, ?, ?, ?, ?, ?)");
+    $insert->bind_param("ssiiid", $student_name, $topics_list, $total, $score, $wrong_count, $percentage);
+    $insert->execute();
 }
 ?>
 
@@ -75,72 +78,17 @@ $insert->execute();
 <meta charset="UTF-8">
 <title>نتیجه آزمون</title>
 <style>
-body {
-    direction: rtl;
-    font-family: sans-serif;
-    background-color: #f5f5f5;
-    padding: 30px;
-}
-.container {
-    max-width: 900px;
-    margin: auto;
-    background: white;
-    padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0 0 12px rgba(0,0,0,0.1);
-}
-h2, h3 {
-    text-align: center;
-    color: #333;
-}
-.result-box {
-    background: #e9f7ef;
-    border: 1px solid #a5d6a7;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-.result-box strong {
-    color: #1b5e20;
-}
-.wrong {
-    background: #fff3cd;
-    border: 1px solid #ffeeba;
-    padding: 15px;
-    margin-top: 15px;
-    border-radius: 10px;
-}
-.code-block {
-    direction: ltr;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    font-family: monospace;
-    color: #222;
-    margin: 10px 0;
-    white-space: pre-wrap;
-}
-.correct {
-    color: green;
-    font-weight: bold;
-}
-.incorrect {
-    color: red;
-    font-weight: bold;
-}
-a.button {
-    display: inline-block;
-    margin: 20px auto;
-    padding: 12px 25px;
-    background: #0073aa;
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-}
-a.button:hover {
-    background: #005f87;
-}
+body { direction: rtl; font-family: sans-serif; background-color: #f5f5f5; padding: 30px; }
+.container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 0 12px rgba(0,0,0,0.1);}
+h2,h3 { text-align:center; color:#333;}
+.result-box { background:#e9f7ef; border:1px solid #a5d6a7; padding:15px; border-radius:10px; margin-bottom:20px; }
+.result-box strong { color:#1b5e20;}
+.wrong { background:#fff3cd; border:1px solid #ffeeba; padding:15px; margin-top:15px; border-radius:10px;}
+.code-block { direction:ltr; background:#f5f5f5; border:1px solid #ddd; border-radius:8px; padding:10px; font-family:monospace; color:#222; margin:10px 0; white-space: pre-wrap; overflow-x:auto; }
+.correct { color:green; font-weight:bold; }
+.incorrect { color:red; font-weight:bold; }
+a.button { display:inline-block; margin:20px auto; padding:12px 25px; background:#0073aa; color:white; text-decoration:none; border-radius:8px;}
+a.button:hover { background:#005f87; }
 </style>
 </head>
 
@@ -149,9 +97,11 @@ a.button:hover {
     <h2>📊 نتیجه آزمون شما</h2>
 
     <div class="result-box">
+        <p><strong>دانش‌آموز:</strong> <?= htmlspecialchars($student_name) ?></p>
+        <p><strong>موضوعات انتخاب شده:</strong> <?= htmlspecialchars($topics_list) ?></p>
         <p><strong>تعداد کل سؤالات:</strong> <?= $total ?></p>
         <p><strong>تعداد پاسخ‌های صحیح:</strong> <?= $score ?></p>
-        <p><strong>تعداد پاسخ‌های غلط:</strong> <?= $total - $score ?></p>
+        <p><strong>تعداد پاسخ‌های غلط:</strong> <?= $wrong_count ?></p>
         <p><strong>درصد نهایی:</strong> <?= $percentage ?>%</p>
     </div>
 
@@ -181,7 +131,7 @@ a.button:hover {
     <?php endif; ?>
 
     <div style="text-align:center;">
-        <a href="quiz.php" class="button">آزمون مجدد 🔁</a>
+        <a href="start_quiz.php" class="button">آزمون مجدد 🔁</a>
         <a href="index.php" class="button">بازگشت به صفحه اصلی 🏠</a>
     </div>
 </div>
