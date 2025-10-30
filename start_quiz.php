@@ -1,6 +1,25 @@
 <?php
 require 'db.php';
 
+session_start();
+require 'db.php';
+
+// اگر فرم ارسال شده
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['student_id']) && !empty($_POST['topics'])) {
+        $_SESSION['student_id'] = $_POST['student_id'];
+        $_SESSION['topics'] = $_POST['topics'];
+        $_SESSION['duration'] = intval($_POST['duration']);
+        header("Location: quiz.php");
+        exit;
+    } else {
+        $error = "لطفاً دانش‌آموز و حداقل یک موضوع را انتخاب کنید.";
+    }
+}
+
+// دریافت موضوعات برای فرم
+$topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
+
 // دریافت موضوعات
 $topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
 ?>
@@ -97,7 +116,7 @@ button:hover { background: #005f87; }
 <div class="container">
     <h2 style="text-align:center;">🧠 شروع آزمون جدید</h2>
 
-    <form action="quiz.php" method="post" onsubmit="return validateForm()">
+    <form method="post" onsubmit="return validateForm()">
         <label>فیلتر سال تحصیلی:</label>
         <select id="year-filter" style="width:100%">
             <option value="">همه سال‌ها</option>
@@ -124,6 +143,11 @@ button:hover { background: #005f87; }
             </label>
             <?php endwhile; ?>
         </div>
+
+        <!-- 🕒 محدوده زمانی آزمون -->
+        <label>⏱ مدت آزمون (دقیقه):</label>
+        <input type="number" name="duration" min="1" max="99" value="10" required
+               style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:15px;">
 
         <button type="submit">شروع آزمون 🚀</button>
     </form>

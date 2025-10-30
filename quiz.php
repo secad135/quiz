@@ -2,31 +2,21 @@
 require 'db.php';
 session_start();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $student_id = (int)$_POST['student_id'];
-    $topics_selected = $_POST['topics'] ?? [];
+if (!isset($_SESSION['student_id'], $_SESSION['topics'], $_SESSION['duration'])) {
+    header("Location: start_quiz.php");
+    exit;
+}
 
-    if ($student_id === 0 || empty($topics_selected)) {
-        die("❌ دانش‌آموز یا موضوعات انتخاب نشده‌اند!");
-    }
+$student_id = $_SESSION['student_id'];
+$topics = $_SESSION['topics'];
+$duration = $_SESSION['duration'];
 
-    $_SESSION['student_id'] = $student_id;
-    $_SESSION['topics'] = $topics_selected;
+$topic_ids = implode(',', array_map('intval', $topics));
+$sql = "SELECT * FROM questions WHERE topic_id IN ($topic_ids) ORDER BY RAND()";
+$result = $conn->query($sql);
 
-    // انتخاب سوالات مربوط به موضوعات انتخاب شده
-    $placeholders = implode(',', array_fill(0, count($topics_selected), '?'));
-    $types = str_repeat('i', count($topics_selected));
-
-    $sql = "SELECT id, question, code_snippet, option_a, option_b, option_c, option_d, correct_option
-            FROM questions
-            WHERE topic_id IN ($placeholders)
-            ORDER BY RAND()"; // سوالات رندم
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$topics_selected);
-    $stmt->execute();
-    $questions = $stmt->get_result();
-} else {
-    die("❌ دسترسی غیرمجاز!");
+if ($result->num_rows == 0) {
+    die("<h3>❌ سؤالی برای موضوعات انتخاب‌شده وجود ندارد.</h3>");
 }
 ?>
 
@@ -35,125 +25,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <head>
     <meta charset="UTF-8">
-    <title>📝 آزمون</title>
+    <title>آزمون در حال اجرا</title>
     <style>
         body {
-            font-family: sans-serif;
             direction: rtl;
-            background: #f2f2f2;
+            font-family: sans-serif;
+            background-color: #f4f6f8;
             padding: 20px;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 800px;
             margin: auto;
             background: #fff;
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 0 10px #ccc;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         h2 {
             text-align: center;
-            margin-bottom: 20px;
+            color: #333;
         }
 
         .question {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             padding: 15px;
-            border-radius: 10px;
-            background: #f9f9f9;
+            border-bottom: 1px solid #ddd;
         }
 
-        .code-block {
-            background: #333333ff;
-            color: lime;
-            padding: 10px;
-            border-radius: 6px;
-            font-family: monospace;
-            overflow-x: auto;
-            direction: ltr;
-            text-align: left;
-            font-size: large;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-            direction: ltr;
-            text-align: left;
-        }
-
-        li {
-            margin: 5px 0;
+        .ltr {
             direction: ltr;
             text-align: left;
         }
 
         button {
             background: #0073aa;
-            color: #fff;
+            color: white;
+            padding: 10px 25px;
             border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
-            width: 100%;
-            font-size: 16px;
         }
 
         button:hover {
             background: #005f87;
+        }
+        #timer {
+            position: sticky;
+            top: 0;
+            background: #0073aa;
+            color: #fff;
+            text-align: center;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 1000;
+            border-bottom: 3px solid #005f87;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h2>📝 آزمون شما</h2>
-        <form method="post" action="result.php">
-            <?php while ($row = $questions->fetch_assoc()): ?>
+        <h2>🧠 آزمون فعال</h2>
+        <div id="timer"></div>
 
-                <?php
-                // ساخت آرایه گزینه‌ها
+        <form id="quizForm" action="result.php" method="post">
+            <?php
+            $qnum = 1;
+            while ($row = $result->fetch_assoc()):
+                // گزینه‌ها را تصادفی کن
                 $options = [
                     'A' => $row['option_a'],
                     'B' => $row['option_b'],
                     'C' => $row['option_c'],
                     'D' => $row['option_d']
                 ];
-
-                // شافل گزینه‌ها
-                $shuffled_options = [];
-                foreach ($options as $key => $value) {
-                    $shuffled_options[] = ['key' => $key, 'value' => $value];
-                }
-                shuffle($shuffled_options);
-                ?>
-
+                $shuffled = array_keys($options);
+                shuffle($shuffled);
+            ?>
                 <div class="question">
-                    <strong><?= htmlspecialchars($row['question']) ?></strong>
+                    <p><strong><?= $qnum++ ?>.</strong> <?= htmlspecialchars($row['question']) ?></p>
                     <?php if (!empty($row['code_snippet'])): ?>
-                        <pre class="code-block"><?= htmlspecialchars($row['code_snippet']) ?></pre>
+                        <pre class="ltr"><?= htmlspecialchars($row['code_snippet']) ?></pre>
                     <?php endif; ?>
 
-                    <ul>
-                        <?php foreach ($shuffled_options as $opt): ?>
-                            <li>
-                                <label>
-                                    <input type="radio" name="answers[<?= $row['id'] ?>]" value="<?= $opt['key'] ?>" required>
-                                    <?= htmlspecialchars($opt['value']) ?>
-                                </label>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
+                    <?php foreach ($shuffled as $key): ?>
+                        <label>
+                            <input type="radio" name="answers[<?= $row['id'] ?>]" value="<?= $key ?>">
+                            <?= htmlspecialchars($options[$key]) ?>
+                        </label><br>
+                    <?php endforeach; ?>
                 </div>
-
             <?php endwhile; ?>
 
-            <input type="hidden" name="student_id" value="<?= $_SESSION['student_id'] ?>">
-            <button type="submit">ارسال پاسخ‌ها ✅</button>
+            <div style="text-align:center;">
+                <button type="submit">ثبت آزمون ✅</button>
+            </div>
         </form>
     </div>
+
+    <script>
+        let duration = <?= $duration ?> * 60; // تبدیل دقیقه به ثانیه
+
+        function updateTimer() {
+            let minutes = Math.floor(duration / 60);
+            let seconds = duration % 60;
+            document.getElementById('timer').textContent =
+                `⏱ زمان باقیمانده: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            if (duration <= 0) {
+                clearInterval(timerInterval);
+                alert("⏰ زمان آزمون به پایان رسید!");
+                document.getElementById('quizForm').submit();
+            }
+            duration--;
+        }
+        let timerInterval = setInterval(updateTimer, 1000);
+        updateTimer();
+    </script>
+
 </body>
 
 </html>
