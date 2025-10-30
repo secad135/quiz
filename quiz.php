@@ -83,6 +83,12 @@ if ($result->num_rows == 0) {
             z-index: 1000;
             border-bottom: 3px solid #005f87;
         }
+        pre{
+            font-size: large;
+            background-color: lightgray;
+            padding: 5px;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -113,8 +119,10 @@ if ($result->num_rows == 0) {
 
                     <?php foreach ($shuffled as $key): ?>
                         <label>
+                            <div class="ltr">
                             <input type="radio" name="answers[<?= $row['id'] ?>]" value="<?= $key ?>">
                             <?= htmlspecialchars($options[$key]) ?>
+                            </div>
                         </label><br>
                     <?php endforeach; ?>
                 </div>

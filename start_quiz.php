@@ -1,8 +1,6 @@
 <?php
 require 'db.php';
-
 session_start();
-require 'db.php';
 
 // اگر فرم ارسال شده
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -17,9 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// دریافت موضوعات برای فرم
-$topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
-
 // دریافت موضوعات
 $topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
 ?>
@@ -29,8 +24,6 @@ $topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
 <head>
 <meta charset="UTF-8">
 <title>شروع آزمون جدید</title>
-
-<!-- لینک‌های Select2 -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -38,70 +31,89 @@ $topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
 <style>
 body {
     direction: rtl;
-    font-family: sans-serif;
-    background: #f2f2f2;
-    padding: 30px;
+    font-family: "Vazir", sans-serif;
+    background: linear-gradient(135deg, #e3f2fd, #f8f9fa);
+    margin: 0;
+    padding: 0;
 }
 .container {
     max-width: 700px;
-    margin: auto;
-    background: white;
-    padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 40px auto;
+    background: #fff;
+    padding: 30px 35px;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+h2 {
+    text-align: center;
+    color: #0073aa;
+    margin-bottom: 25px;
 }
 label {
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     font-weight: bold;
+    color: #333;
 }
-.select2-container--default .select2-selection--single {
-    height: 40px;
-    padding: 5px 10px;
+select, input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 15px;
 }
 .checkbox-list {
     border: 1px solid #ddd;
     padding: 15px;
     border-radius: 10px;
     background: #f9f9f9;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     max-height: 200px;
     overflow-y: auto;
 }
 .checkbox-list label {
     display: block;
-    padding: 8px;
+    padding: 8px 10px;
     margin: 5px 0;
     background: white;
     border-radius: 6px;
     border: 1px solid #eee;
+    transition: background 0.3s ease;
 }
-.checkbox-list label:hover { background: #f0f8ff; }
+.checkbox-list label:hover { background: #eaf6ff; }
+
 button {
-    background: #0073aa;
+    background: linear-gradient(135deg, #0073aa, #005f87);
     color: white;
     border: none;
-    padding: 12px 20px;
-    border-radius: 8px;
+    padding: 14px 20px;
+    border-radius: 10px;
     font-size: 16px;
     cursor: pointer;
     width: 100%;
+    font-weight: bold;
+    transition: all 0.3s ease;
 }
-button:hover { background: #005f87; }
+button:hover { background: linear-gradient(135deg, #006194, #004f70); }
+
 .links {
     text-align: center;
-    margin-top: 20px;
+    margin-top: 25px;
 }
 .links a {
     display: inline-block;
-    margin: 5px;
+    margin: 6px;
     padding: 10px 15px;
     background: #28a745;
     color: white;
     text-decoration: none;
-    border-radius: 6px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: background 0.3s ease;
 }
 .links a:hover { background: #218838; }
+
 .error {
     color: #dc3545;
     text-align: center;
@@ -110,15 +122,28 @@ button:hover { background: #005f87; }
     background: #f8d7da;
     border-radius: 6px;
 }
+
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+        margin: 20px;
+    }
+    button {
+        font-size: 15px;
+    }
+}
 </style>
 </head>
 <body>
+
 <div class="container">
-    <h2 style="text-align:center;">🧠 شروع آزمون جدید</h2>
+    <h2>🧠 شروع آزمون جدید</h2>
+
+    <?php if (isset($error)) echo "<div class='error'>$error</div>"; ?>
 
     <form method="post" onsubmit="return validateForm()">
-        <label>فیلتر سال تحصیلی:</label>
-        <select id="year-filter" style="width:100%">
+        <label>📅 فیلتر سال تحصیلی:</label>
+        <select id="year-filter">
             <option value="">همه سال‌ها</option>
             <?php
             $years = $conn->query("SELECT DISTINCT academic_year FROM students ORDER BY academic_year DESC");
@@ -128,62 +153,52 @@ button:hover { background: #005f87; }
             ?>
         </select>
 
-        <label>جستجوی دانش‌آموز:</label>
-        <select id="student-select" name="student_id" style="width:100%" required></select>
+        <label>👤 جستجوی دانش‌آموز:</label>
+        <select id="student-select" name="student_id" required></select>
 
-        <label>انتخاب موضوعات آزمون (حداقل یک موضوع):</label>
+        <label>📚 انتخاب موضوعات آزمون (حداقل یک موضوع):</label>
         <div class="checkbox-list">
-            <?php
-            $topics->data_seek(0);
-            while ($t = $topics->fetch_assoc()):
-            ?>
-            <label>
-                <input type="checkbox" name="topics[]" value="<?= $t['id'] ?>">
-                <?= htmlspecialchars($t['name']) ?>
-            </label>
+            <?php while ($t = $topics->fetch_assoc()): ?>
+                <label>
+                    <input type="checkbox" name="topics[]" value="<?= $t['id'] ?>"> <?= htmlspecialchars($t['name']) ?>
+                </label>
             <?php endwhile; ?>
         </div>
 
-        <!-- 🕒 محدوده زمانی آزمون -->
         <label>⏱ مدت آزمون (دقیقه):</label>
-        <input type="number" name="duration" min="1" max="99" value="10" required
-               style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:15px;">
+        <input type="number" name="duration" min="1" max="99" value="10" required>
 
-        <button type="submit">شروع آزمون 🚀</button>
+        <button type="submit">🚀 شروع آزمون</button>
     </form>
 
     <div class="links">
-        <a href="register_student.php">➕ ثبت‌نام دانش‌آموز جدید</a>
+        <a href="register_student.php">➕ ثبت‌نام دانش‌آموز</a>
         <a href="manage_students.php">👥 مدیریت دانش‌آموزان</a>
         <a href="index.php">🏠 صفحه اصلی</a>
     </div>
 </div>
 
 <script>
-// فعال کردن Select2 با AJAX
+// فعال‌سازی Select2 با جستجو و فیلتر سال
 $('#student-select').select2({
     placeholder: "جستجوی دانش‌آموز...",
     ajax: {
         url: 'search_students.php',
         dataType: 'json',
         delay: 250,
-        data: function(params) {
-            return {
-                term: params.term || '',
-                year: $('#year-filter').val()
-            };
-        },
-        processResults: function(data) {
-            return { results: data };
-        },
+        data: params => ({
+            term: params.term || '',
+            year: $('#year-filter').val()
+        }),
+        processResults: data => ({ results: data }),
         cache: true
     },
     minimumInputLength: 1
 });
 
-// تغییر سال فیلتر
+// تغییر فیلتر سال → ریست انتخاب
 $('#year-filter').on('change', function() {
-    $('#student-select').val(null).trigger('change'); // پاک کردن انتخاب فعلی
+    $('#student-select').val(null).trigger('change');
 });
 
 // بررسی حداقل انتخاب موضوع
