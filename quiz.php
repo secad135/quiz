@@ -11,6 +11,14 @@ $student_id = $_SESSION['student_id'];
 $topics = $_SESSION['topics'];
 $duration = $_SESSION['duration'];
 
+// دریافت نام دانش‌آموز
+$student_stmt = $conn->prepare("SELECT full_name FROM students WHERE id = ?");
+$student_stmt->bind_param("i", $student_id);
+$student_stmt->execute();
+$student_result = $student_stmt->get_result();
+$student = $student_result->fetch_assoc();
+$student_name = $student ? $student['full_name'] : 'نامشخص';
+
 $topic_ids = implode(',', array_map('intval', $topics));
 $sql = "SELECT * FROM questions WHERE topic_id IN ($topic_ids) ORDER BY RAND()";
 $result = $conn->query($sql);
@@ -89,12 +97,28 @@ if ($result->num_rows == 0) {
             padding: 5px;
             font-weight: 600;
         }
+        .student-info {
+            text-align: center;
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-right: 4px solid #28a745;
+            font-weight: bold;
+            font-size: 16px;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h2>🧠 آزمون فعال</h2>
+        
+        <!-- نمایش نام دانش‌آموز -->
+        <div class="student-info">
+            👤 دانش‌آموز: <?= htmlspecialchars($student_name) ?>
+        </div>
+        
         <div id="timer"></div>
 
         <form id="quizForm" action="result.php" method="post">
