@@ -118,11 +118,11 @@ $result = $conn->query($sql);
             <tr>
                 <td><?= $row['id'] ?></td>
                 <td class="rtl-text"><?= htmlspecialchars($row['question']) ?></td>
-                <td>
+                <td class="ltr-text">
                     <?php if (!empty($row['code_snippet'])): ?>
-                        <pre><?= htmlspecialchars(substr($row['code_snippet'], 0, 100)) ?>...</pre>
+                        <pre><?= htmlspecialchars(substr($row['code_snippet'], 0, 100)) ?></pre>
                     <?php else: ?>
-                        <em>بدون کد</em>
+                        <em > </em>
                     <?php endif; ?>
                 </td>
                 <td><?= htmlspecialchars($row['topic_name']) ?></td>
