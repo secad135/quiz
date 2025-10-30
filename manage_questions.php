@@ -97,7 +97,8 @@ $result = $conn->query($sql);
 <body>
     <h2>مدیریت سؤالات بانک</h2>
     <a href="add_question.php" class="button edit">➕ افزودن سؤال جدید</a>
-     <a href="index.php" class="button edit">بازگشت به صفحه اصلی</a>
+    <a href="index.php" class="button edit">بازگشت به صفحه اصلی</a>
+    <a href="manage_topics.php" class="button edit">ویرایش موضوعات</a>
     <br><br>
     <table>
         <tr>
