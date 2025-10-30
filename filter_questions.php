@@ -1,14 +1,14 @@
 <?php
 require 'db.php';
 
-// موضوع انتخاب شده
-$selected_topic_id = isset($_GET['topic_id']) ? (int)$_GET['topic_id'] : 0;
+// دریافت لیست موضوعات برای فیلتر
+$topics = $conn->query("SELECT id, name FROM topics ORDER BY name ASC");
 
-// دریافت تمام موضوعات برای لیست کشویی
-$topics = $conn->query("SELECT * FROM topics ORDER BY name ASC");
+// دریافت موضوع انتخاب شده (در صورت ارسال)
+$selected_topic = isset($_GET['topic_id']) ? (int)$_GET['topic_id'] : 0;
 
-// دریافت سوالات بر اساس موضوع انتخاب شده
-if ($selected_topic_id) {
+// دریافت سوالات بر اساس موضوع انتخابی یا همه
+if ($selected_topic > 0) {
     $stmt = $conn->prepare("
         SELECT q.*, t.name AS topic_name, l.level_name
         FROM questions q
@@ -17,11 +17,11 @@ if ($selected_topic_id) {
         WHERE q.topic_id = ?
         ORDER BY q.id DESC
     ");
-    $stmt->bind_param("i", $selected_topic_id);
+    $stmt->bind_param("i", $selected_topic);
     $stmt->execute();
-    $questions = $stmt->get_result();
+    $result = $stmt->get_result();
 } else {
-    $questions = $conn->query("
+    $result = $conn->query("
         SELECT q.*, t.name AS topic_name, l.level_name
         FROM questions q
         JOIN topics t ON q.topic_id = t.id
@@ -30,19 +30,36 @@ if ($selected_topic_id) {
     ");
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="fa">
 
 <head>
     <meta charset="UTF-8">
-    <title>فیلتر سوالات بر اساس موضوع</title>
+    <title>فیلتر سؤالات بانک</title>
     <style>
         body {
             direction: rtl;
             font-family: sans-serif;
             background: #f2f2f2;
             padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        select,
+        button {
+            padding: 8px 12px;
+            font-size: 16px;
+            margin-left: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
         }
 
         table {
@@ -62,6 +79,10 @@ if ($selected_topic_id) {
         th {
             background: #0073aa;
             color: #fff;
+            position: sticky;
+            /* چسباندن header */
+            top: 0;
+            z-index: 2;
         }
 
         tr:nth-child(even) {
@@ -101,45 +122,34 @@ if ($selected_topic_id) {
             border-radius: 6px;
             font-family: monospace;
         }
-
-        select {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-left: 10px;
-        }
-
-        form {
-            margin-bottom: 20px;
-            text-align: center;
-        }
     </style>
+
 </head>
 
 <body>
-    <h2>📄 فیلتر سوالات بر اساس موضوع</h2>
+
+    <h2>📋 فیلتر سؤالات بانک</h2>
 
     <form method="get">
         <label>انتخاب موضوع:</label>
         <select name="topic_id" onchange="this.form.submit()">
             <option value="0">-- همه موضوعات --</option>
             <?php while ($t = $topics->fetch_assoc()): ?>
-                <option value="<?= $t['id'] ?>" <?= $selected_topic_id == $t['id'] ? 'selected' : '' ?>>
+                <option value="<?= $t['id'] ?>" <?= $selected_topic == $t['id'] ? 'selected' : '' ?>>
                     <?= htmlspecialchars($t['name']) ?>
                 </option>
             <?php endwhile; ?>
         </select>
-        <noscript><button type="submit">فیلتر</button></noscript>
+        <noscript><button type="submit">اعمال فیلتر</button></noscript>
     </form>
 
     <a href="add_question.php" class="button edit">➕ افزودن سؤال جدید</a>
-    <a href="manage_questions.php" class="button edit">مدیریت همه سوالات</a>
+    <a href="manage_questions.php" class="button edit">مدیریت همه سؤالات</a>
     <a href="manage_topics.php" class="button edit">ویرایش موضوعات</a>
-
     <br><br>
 
-    <?php if ($questions->num_rows > 0): ?>
-        <table>
+    <table>
+        <thead>
             <tr>
                 <th>#</th>
                 <th>سؤال</th>
@@ -153,17 +163,16 @@ if ($selected_topic_id) {
                 <th>پاسخ صحیح</th>
                 <th>عملیات</th>
             </tr>
-            <?php $i = 1;
-            while ($row = $questions->fetch_assoc()): ?>
+        </thead>
+        <tbody>
+            <?php while ($row = $result->fetch_assoc()): ?>
                 <tr>
                     <td><?= $row['id'] ?></td>
                     <td class="rtl-text"><?= htmlspecialchars($row['question']) ?></td>
                     <td class="ltr-text">
                         <?php if (!empty($row['code_snippet'])): ?>
                             <pre><?= htmlspecialchars(substr($row['code_snippet'], 0, 100)) ?></pre>
-                        <?php else: ?>
-                            <em> </em>
-                        <?php endif; ?>
+                        <?php else: ?><em>–</em><?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($row['topic_name']) ?></td>
                     <td><?= htmlspecialchars($row['level_name']) ?></td>
@@ -174,14 +183,13 @@ if ($selected_topic_id) {
                     <td><?= $row['correct_option'] ?></td>
                     <td>
                         <a href="edit_question.php?id=<?= $row['id'] ?>" class="button edit">ویرایش</a>
-                        <a href="filter_questions.php?topic_id=<?= $selected_topic_id ?>&delete=<?= $row['id'] ?>" class="button delete" onclick="return confirm('آیا مطمئن هستید؟');">حذف</a>
+                        <a href="manage_questions.php?delete=<?= $row['id'] ?>" class="button delete" onclick="return confirm('آیا مطمئن هستید؟');">حذف</a>
                     </td>
                 </tr>
             <?php endwhile; ?>
-        </table>
-    <?php else: ?>
-        <p style="text-align:center; padding:20px; color:#666;">❌ هیچ سوالی برای این موضوع ثبت نشده است.</p>
-    <?php endif; ?>
+        </tbody>
+    </table>
+
 </body>
 
 </html>

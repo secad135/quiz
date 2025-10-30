@@ -66,13 +66,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .code-block {
-            background: #f5f5f5;
+            background: #333333ff;
+            color: lime;
             padding: 10px;
             border-radius: 6px;
             font-family: monospace;
             overflow-x: auto;
             direction: ltr;
             text-align: left;
+            font-size: large;
         }
 
         ul {

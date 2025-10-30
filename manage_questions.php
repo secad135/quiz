@@ -35,6 +35,24 @@ $result = $conn->query($sql);
             padding: 20px;
         }
 
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        select,
+        button {
+            padding: 8px 12px;
+            font-size: 16px;
+            margin-left: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -52,6 +70,10 @@ $result = $conn->query($sql);
         th {
             background: #0073aa;
             color: #fff;
+            position: sticky;
+            /* چسباندن header */
+            top: 0;
+            z-index: 2;
         }
 
         tr:nth-child(even) {
@@ -92,6 +114,7 @@ $result = $conn->query($sql);
             font-family: monospace;
         }
     </style>
+
 </head>
 
 <body>
@@ -123,7 +146,7 @@ $result = $conn->query($sql);
                     <?php if (!empty($row['code_snippet'])): ?>
                         <pre><?= htmlspecialchars(substr($row['code_snippet'], 0, 100)) ?></pre>
                     <?php else: ?>
-                        <em > </em>
+                        <em> </em>
                     <?php endif; ?>
                 </td>
                 <td><?= htmlspecialchars($row['topic_name']) ?></td>
