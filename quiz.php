@@ -2,24 +2,40 @@
 require 'db.php';
 session_start();
 
-// گرفتن نام دانش‌آموز از فرم قبلی یا session
+// دریافت اطلاعات از فرم start_quiz.php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_SESSION['student_name'] = trim($_POST['student_name']);
+    $_SESSION['student_id'] = (int)$_POST['student_id'];
     $_SESSION['topics'] = $_POST['topics'] ?? [];
 }
 
-// بررسی انتخاب موضوعات
-$topics = $_SESSION['topics'] ?? [];
-if (empty($topics)) {
-    die("❌ لطفاً حداقل یک موضوع را انتخاب کنید.");
+// بررسی وجود student_id و topics
+if (!isset($_SESSION['student_id']) || empty($_SESSION['topics'])) {
+    header("Location: start_quiz.php");
+    exit;
 }
+
+$student_id = $_SESSION['student_id'];
+$topics = $_SESSION['topics'];
+
+// دریافت اطلاعات دانش‌آموز
+$student_stmt = $conn->prepare("SELECT full_name, academic_year FROM students WHERE id = ?");
+$student_stmt->bind_param("i", $student_id);
+$student_stmt->execute();
+$student_result = $student_stmt->get_result();
+
+if ($student_result->num_rows === 0) {
+    die("❌ دانش‌آموزی با این شناسه پیدا نشد.");
+}
+
+$student = $student_result->fetch_assoc();
+$student_name = $student['full_name'];
 
 // آماده‌سازی placeholders برای IN(...)
 $topic_placeholders = implode(',', array_fill(0, count($topics), '?'));
 $types = str_repeat('i', count($topics));
 $question_limit = 20;
 
-// انتخاب تصادفی سوالات از موضوعات انتخاب‌شده
+// انتخاب تصادفی سوالات
 $sql = "SELECT id, topic_id, question, code_snippet, option_a, option_b, option_c, option_d, correct_option
         FROM questions
         WHERE topic_id IN ($topic_placeholders)
@@ -28,15 +44,13 @@ $sql = "SELECT id, topic_id, question, code_snippet, option_a, option_b, option_
 $stmt = $conn->prepare($sql);
 if (!$stmt) die("خطا در آماده‌سازی پرس‌وجو: " . $conn->error);
 
-// bind_param نیاز دارد که آرایه topic_ids به صورت جداگانه + limit باشد
 $params = array_merge($topics, [$question_limit]);
 $stmt->bind_param($types . 'i', ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
 
-// بررسی تعداد سوالات
 if ($result->num_rows === 0) {
-    die("❌ هیچ سؤالی در پایگاه داده یافت نشد!");
+    die("❌ هیچ سؤالی برای موضوعات انتخاب شده یافت نشد!");
 }
 ?>
 
@@ -64,6 +78,13 @@ h2 {
     text-align: center;
     color: #333;
 }
+.student-info {
+    background: #e7f3ff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-right: 4px solid #0073aa;
+}
 .question {
     margin-bottom: 25px;
     padding: 15px;
@@ -83,9 +104,14 @@ h2 {
 }
 label {
     display: block;
-    padding: 6px;
+    padding: 8px;
     border-radius: 6px;
-    direction: ltr;
+    direction: rtl;
+    margin: 5px 0;
+    cursor: pointer;
+}
+label:hover {
+    background: #f0f8ff;
 }
 input[type="radio"] {
     margin-left: 10px;
@@ -111,6 +137,21 @@ button:hover {
 <div class="container">
     <h2>🧠 آزمون آنلاین PHP</h2>
 
+    <div class="student-info">
+        <p><strong>👨‍🎓 دانش‌آموز:</strong> <?= htmlspecialchars($student_name) ?></p>
+        <p><strong>📚 موضوعات انتخاب شده:</strong> 
+            <?php
+            $topic_names = $conn->query("SELECT name FROM topics WHERE id IN (" . implode(',', $topics) . ")");
+            $names = [];
+            while($t = $topic_names->fetch_assoc()) {
+                $names[] = $t['name'];
+            }
+            echo htmlspecialchars(implode('، ', $names));
+            ?>
+        </p>
+        <p><strong>📊 تعداد سوالات:</strong> <?= $result->num_rows ?> سؤال</p>
+    </div>
+
     <form action="result.php" method="post">
         <?php
         $qNumber = 1;
@@ -125,22 +166,22 @@ button:hover {
 
             <label>
                 <input type="radio" name="answers[<?= $row['id'] ?>]" value="A" required>
-                <?= htmlspecialchars($row['option_a']) ?>
+                <strong>A)</strong> <?= htmlspecialchars($row['option_a']) ?>
             </label>
 
             <label>
                 <input type="radio" name="answers[<?= $row['id'] ?>]" value="B">
-                <?= htmlspecialchars($row['option_b']) ?>
+                <strong>B)</strong> <?= htmlspecialchars($row['option_b']) ?>
             </label>
 
             <label>
                 <input type="radio" name="answers[<?= $row['id'] ?>]" value="C">
-                <?= htmlspecialchars($row['option_c']) ?>
+                <strong>C)</strong> <?= htmlspecialchars($row['option_c']) ?>
             </label>
 
             <label>
                 <input type="radio" name="answers[<?= $row['id'] ?>]" value="D">
-                <?= htmlspecialchars($row['option_d']) ?>
+                <strong>D)</strong> <?= htmlspecialchars($row['option_d']) ?>
             </label>
         </div>
         <?php 
