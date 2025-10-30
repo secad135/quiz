@@ -71,17 +71,31 @@ select, input[type="number"] {
     margin-bottom: 20px;
     max-height: 200px;
     overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
 }
 .checkbox-list label {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 8px 10px;
-    margin: 5px 0;
+    margin: 0;
     background: white;
     border-radius: 6px;
     border: 1px solid #eee;
     transition: background 0.3s ease;
+    font-size: 14px;
+    cursor: pointer;
 }
-.checkbox-list label:hover { background: #eaf6ff; }
+.checkbox-list label:hover { 
+    background: #eaf6ff; 
+    border-color: #0073aa;
+}
+.checkbox-list input[type="checkbox"] {
+    margin-left: 8px;
+    transform: scale(1.1);
+    cursor: pointer;
+}
 
 button {
     background: linear-gradient(135deg, #0073aa, #005f87);
@@ -128,8 +142,17 @@ button:hover { background: linear-gradient(135deg, #006194, #004f70); }
         padding: 20px;
         margin: 20px;
     }
+    .checkbox-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
     button {
         font-size: 15px;
+    }
+}
+
+@media (max-width: 400px) {
+    .checkbox-list {
+        grid-template-columns: 1fr;
     }
 }
 </style>
