@@ -13,7 +13,7 @@ if (isset($_GET['delete'])) {
 }
 
 // دریافت تمام دانش‌آموزان
-$students = $conn->query("SELECT * FROM students ORDER BY academic_year DESC, full_name ASC");
+$students = $conn->query("SELECT * FROM students ORDER BY id");
 ?>
 
 <!DOCTYPE html>
