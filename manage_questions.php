@@ -99,6 +99,7 @@ $result = $conn->query($sql);
     <a href="add_question.php" class="button edit">➕ افزودن سؤال جدید</a>
     <a href="index.php" class="button edit">بازگشت به صفحه اصلی</a>
     <a href="manage_topics.php" class="button edit">ویرایش موضوعات</a>
+    <a href="filter_questions.php" class="button edit">فیلتر سوالات</a>
     <br><br>
     <table>
         <tr>
