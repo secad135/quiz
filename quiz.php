@@ -20,7 +20,7 @@ $student = $student_result->fetch_assoc();
 $student_name = $student ? $student['full_name'] : 'نامشخص';
 
 $topic_ids = implode(',', array_map('intval', $topics));
-$sql = "SELECT * FROM questions WHERE topic_id IN ($topic_ids) ORDER BY RAND()";
+$sql = "SELECT * FROM questions WHERE topic_id IN ($topic_ids) ORDER BY RAND() LIMIT 20";
 $result = $conn->query($sql);
 
 if ($result->num_rows == 0) {
@@ -40,6 +40,7 @@ if ($result->num_rows == 0) {
             font-family: sans-serif;
             background-color: #f4f6f8;
             padding: 20px;
+            user-select: none;
         }
 
         .container {
